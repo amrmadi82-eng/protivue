@@ -1,13 +1,14 @@
 // ProtiVue service worker: app works offline (manual entry, history, reports).
 // Photo analysis and USDA search always go to the network.
-const CACHE = "protivue-v4";
+const CACHE = "protivue-v5";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/apple-touch-icon.png"
+  "./icons/apple-touch-icon.png",
+  "./icons/logo-mark.svg"
 ];
 
 self.addEventListener("install", (e) => {
