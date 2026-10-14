@@ -778,38 +778,53 @@ async function hashFile(file){
 
 /* ============ analysis ============ */
 function dbListForPrompt(){ return allFoods().map(f=>`${f.key} | ${f.en} | ${f.ar}`).join("\n") }
-async function analyze(blob, signal){ /* prompt below */
-  const prompt = `You are a careful food-photo analyst for a nutrition tracker used by bodybuilders.
-Look at the attached meal photo. Identify every distinct food component that is visible, and estimate the edible weight in grams of each, with a realistic low/high range. Use visual size cues (plate ~26 cm, cutlery, hand, packaging) when present.
+function buildPrompt(extra){
+  return `You are an expert food-photo analyst for a nutrition tracker used by bodybuilders in the UAE. Meals are often Gulf/Emirati, Levantine, Egyptian, Indian or Western, home-cooked or restaurant.
 
-Map each component to the closest entry key from the DATABASE below ONLY when it is genuinely the same food and preparation. If nothing in the database matches, set "key" to null. Do NOT output nutrient values; the app computes them from the database.
-Separate visible sauces, dressings, oils and spreads as their own components when you can see them. Note when hidden fat (frying oil, butter, ghee) is likely.
-
+STEP 1: Decide what the whole dish is (e.g. chicken kabsa, shawarma wrap, koshari, grilled chicken with rice, a single raw carrot). Use the plate, sides, sauces, colours and textures.
+STEP 2: List every distinct visible component and estimate its edible weight in grams with a realistic low/high range. Use size cues (dinner plate ~26 cm, spoon ~15 cm, hand, packaging). Count countable items (eggs, dates, pieces).
+STEP 3: For each component, set "key" to the matching entry from the DATABASE below ONLY when it is the same food and preparation. Otherwise set "key" to null and fill:
+  - "usda_query": 2-5 plain English words to search the USDA database (e.g. "chicken kabsa rice", "beef shawarma", "baba ghanoush").
+  - "est_per100": your best per-100 g estimate {"kcal","p","c","f","sat","fib","sug","na"} (protein/carbs/fat/sat/fiber/sugar in g, sodium in mg). It is used only if the USDA search finds nothing, and the app labels it as an estimate.
+Separate visible sauces, dressings, oils and spreads into their own components. Flag likely hidden fat (frying oil, butter, ghee).
+${extra||""}
 DATABASE (key | English | Arabic):
 ${dbListForPrompt()}
 
-Return ONLY JSON with this shape:
-{"is_food": true,
- "items":[{"key":"white_rice_cooked or null","name_ar":"...","name_en":"...","grams":180,"grams_low":140,"grams_high":230,"confidence":"high|medium|low","note_ar":"short reason or caveat","note_en":"..."}],
- "cooking_method":"grilled|boiled|baked|fried|sauteed|raw|unknown",
- "likely_added_fat": true,
+Return ONLY JSON:
+{"is_food":true,"dish_ar":"...","dish_en":"...",
+ "items":[{"key":"white_rice_cooked or null","name_ar":"...","name_en":"...","grams":180,"grams_low":140,"grams_high":230,"confidence":"high|medium|low","usda_query":"only when key is null","est_per100":{"kcal":0,"p":0,"c":0,"f":0,"sat":0,"fib":0,"sug":0,"na":0},"note_ar":"short caveat","note_en":"..."}],
+ "cooking_method":"grilled|boiled|baked|fried|sauteed|raw|unknown","likely_added_fat":true,
  "questions":[{"text_ar":"...","text_en":"..."}],
- "overall_confidence":"high|medium|low",
- "summary_ar":"one sentence","summary_en":"one sentence"}
-Ask at most 3 short questions, only ones whose answer would change the numbers (portion size, sauce, mixed dish contents). Do not ask about cooking oil or cooking method; the app asks those itself. If the photo shows no food, return {"is_food": false, "items": []}.`;
-  return await geminiJSON(prompt,blob,signal,(msg)=>{ const st=document.querySelector(".sheet .status"); if(st) st.innerHTML=`<span class="spin"></span>${esc(msg)}`; });
+ "overall_confidence":"high|medium|low","summary_ar":"one sentence","summary_en":"one sentence"}
+Ask at most 2 short questions, only if the answer would change the numbers a lot. Never ask about cooking oil or cooking method; the app asks those. If there is no food, return {"is_food":false,"items":[]}.`;
+}
+async function analyze(blob, signal, hint){
+  const extra = hint ? `\nTHE USER SAYS THIS MEAL IS: "${String(hint).slice(0,200)}". Trust this over your own guess when they conflict.\n` : "";
+  return await geminiJSON(buildPrompt(extra),blob,signal,(msg)=>{ const st=document.querySelector(".sheet .status"); if(st) st.innerHTML=`<span class="spin"></span>${esc(msg)}`; });
 }
 
 /* ============ Gemini (free tier) + USDA online ============ */
 const DEFAULT_MODEL="gemini-3.6-flash";
 function blobToB64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); }); }
-const FALLBACK_MODELS=["gemini-3.6-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite","gemini-flash-latest"];
+const FALLBACK_MODELS=["gemini-3.6-flash","gemini-3.5-flash-lite","gemini-3.8-flash","gemini-3.1-flash-lite"];
+const NO_THINK=new Set();
+function thinkCfg(model){ if(NO_THINK.has(model)) return null; if(/^gemini-3\.8/.test(model)) return {thinkingLevel:"low"}; if(/^gemini-3/.test(model)) return {thinkingLevel:"minimal"}; return null; }
 const sleep=(ms,signal)=>new Promise((res,rej)=>{ const t0=setTimeout(res,ms); if(signal) signal.addEventListener("abort",()=>{clearTimeout(t0);rej(Object.assign(new Error("aborted"),{name:"AbortError"}))},{once:true}); });
 async function geminiOnce(model,prompt,b64,mime,signal){
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
-    method:"POST",signal,headers:{"Content-Type":"application/json","x-goog-api-key":S.cfg.geminiKey.trim()},
-    body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt},{inline_data:{mime_type:mime,data:b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:0.2}})});
-  if(!r.ok){ let msg=""; try{ const j=await r.json(); msg=j.error&&j.error.message; }catch(_){} const e=new Error(msg||("HTTP "+r.status)); e.status=r.status; throw e; }
+  const gc={responseMimeType:"application/json",temperature:0.2}; const tc=thinkCfg(model); if(tc) gc.thinkingConfig=tc;
+  const ctl=new AbortController(); const onAb=()=>ctl.abort(); if(signal) signal.addEventListener("abort",onAb,{once:true});
+  const timer=setTimeout(()=>ctl.abort(),40000);
+  let r;
+  try{
+    r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
+      method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json","x-goog-api-key":S.cfg.geminiKey.trim()},
+      body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt},{inline_data:{mime_type:mime,data:b64}}]}],generationConfig:gc})});
+  }catch(e){ clearTimeout(timer); if(signal&&signal.aborted) throw e; const t2=new Error(LANG==="ar"?"انتهت المهلة":"Timed out"); t2.status=504; throw t2; }
+  clearTimeout(timer); if(signal) signal.removeEventListener("abort",onAb);
+  if(!r.ok){ let msg=""; try{ const j=await r.json(); msg=j.error&&j.error.message; }catch(_){}
+    if(r.status===400 && tc && /think/i.test(msg)){ NO_THINK.add(model); return geminiOnce(model,prompt,b64,mime,signal); }
+    const e=new Error(msg||("HTTP "+r.status)); e.status=r.status; throw e; }
   const j=await r.json();
   const txt=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("").trim();
   if(!txt){ const e=new Error(LANG==="ar"?"لم يرجع التحليل نتيجة":"Empty response"); e.status=502; throw e; }
@@ -823,14 +838,15 @@ async function geminiJSON(prompt,blob,signal,onStatus){
   for(let m=0;m<chain.length;m++){
     for(let attempt=0;attempt<2;attempt++){
       try{
-        if(onStatus && (m>0||attempt>0)) onStatus(LANG==="ar"?`الخادم مزدحم، جارٍ المحاولة مرة أخرى (${m*2+attempt+1})…`:`Server busy, retrying (${m*2+attempt+1})…`);
+        if(onStatus && (m>0||attempt>0)) onStatus(LANG==="ar"?`الخادم مزدحم، أجرّب نموذجًا آخر (${m+1}/${chain.length})…`:`Server busy, trying another model (${m+1}/${chain.length})…`);
         return await geminiOnce(chain[m],prompt,b64,mime,signal);
       }catch(e){
         if(e.name==="AbortError") throw e;
         last=e;
-        if(e.status===400||e.status===401||e.status===403) throw e;      // key problem: no point retrying
+        if(e.status===401||e.status===403) throw e;                        // key problem: no point retrying
+        if(e.status===400 && /api key|API_KEY/i.test(e.message||"")) throw e;
         if(e instanceof SyntaxError) break;                                // bad JSON: try next model
-        if(e.status===503||e.status===500||e.status===502){ await sleep(1500*(attempt+1),signal); continue; }
+        if((e.status===503||e.status===500||e.status===502) && attempt===0){ await sleep(1000,signal); continue; }
         break;                                                             // 429 / 404 / other: next model
       }
     }
@@ -847,9 +863,32 @@ function aiErrMsg(e){
   return e&&e.message?` (${e.message})`:"";
 }
 const NUT_IDS={kcal:[1008,2047,2048],p:[1003],c:[1005],f:[1004],sat:[1258],fib:[1079],sug:[2000,1063],na:[1093]};
+const USDA_CACHE={};
+try{ Object.assign(USDA_CACHE, JSON.parse(localStorage.getItem("protivue_usda")||"{}")); }catch(e){}
+async function usdaSearchCached(q){
+  const k=q.trim().toLowerCase(); if(USDA_CACHE[k]) return USDA_CACHE[k];
+  const list=(await usdaSearch(k)).slice(0,6); USDA_CACHE[k]=list;
+  try{ const keys=Object.keys(USDA_CACHE); if(keys.length>150) delete USDA_CACHE[keys[0]]; localStorage.setItem("protivue_usda",JSON.stringify(USDA_CACHE)); }catch(e){}
+  return list;
+}
+function validPer(o){ if(!o||typeof o!=="object") return null; const per={}; let ok=true;
+  ["kcal","p","c","f","sat","fib","sug","na"].forEach(k=>{ const v=o[k]; per[k]=(v==null||v===""||isNaN(+v))?null:Math.max(0,+v); });
+  ["kcal","p","c","f"].forEach(k=>{ if(per[k]==null) ok=false; }); if(per.kcal>950) ok=false; return ok?per:null; }
+/* For components not in the local table: try USDA first (real data), else fall back to Gemini's labelled estimate. */
+async function resolveUnknown(items){
+  const todo=items.filter(it=>!it.key && !it.addedOil && !it.usda && !it.manualPer);
+  await Promise.all(todo.map(async it=>{
+    const q=(it.usdaQ||it.name_en||"").trim(); if(!q) return;
+    try{
+      const list=await Promise.race([usdaSearchCached(q), new Promise((_,rej)=>setTimeout(()=>rej(new Error("t")),7000))]);
+      if(list && list.length){ const top=list[0]; it.per=top.per; it.usda=top.fdcId; it.usdaName=top.name; it.estimated=false; it.cands=list; return; }
+    }catch(e){}
+    if(it.est){ it.per=it.est; it.estimated=true; }
+  }));
+}
 async function usdaSearch(q){
   const key=(S.cfg.usdaKey||"").trim()||"DEMO_KEY";
-  const u=`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(key)}&query=${encodeURIComponent(q)}&dataType=${encodeURIComponent("Foundation,SR Legacy")}&pageSize=15`;
+  const u=`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(key)}&query=${encodeURIComponent(q)}&dataType=${encodeURIComponent("Survey (FNDDS),SR Legacy,Foundation")}&pageSize=12`;
   const r=await fetch(u); if(!r.ok) throw new Error(r.status===429?(LANG==="ar"?"تجاوزت حد البحث المجاني في USDA. أضف مفتاح USDA المجاني من الإعدادات.":"USDA free search limit reached. Add a free USDA key in Settings."):("USDA "+r.status));
   const j=await r.json();
   return (j.foods||[]).map(f=>{ const n={}; (f.foodNutrients||[]).forEach(x=>{ n[x.nutrientId]=x.value; });
@@ -1139,7 +1178,8 @@ function newDraft(extra){
 function aiItem(x){
   const g=Math.max(1,+x.grams||0); const lo=+x.grams_low||g*0.8, hi=+x.grams_high||g*1.25;
   const key = (x.key && foodByKey(x.key)) ? x.key : null;
-  return {uid:uid(),key,name_ar:x.name_ar||x.name_en||"",name_en:x.name_en||x.name_ar||"",grams:Math.round(g),loR:Math.min(1,lo/g),hiR:Math.max(1,hi/g),conf:["high","medium","low"].includes(x.confidence)?x.confidence:"medium",note:LANG==="ar"?(x.note_ar||x.note_en||""):(x.note_en||x.note_ar||""),per:null};
+  const est = key? null : validPer(x.est_per100);
+  return {uid:uid(),key,name_ar:x.name_ar||x.name_en||"",name_en:x.name_en||x.name_ar||"",grams:Math.round(g),loR:Math.min(1,lo/g),hiR:Math.max(1,hi/g),conf:["high","medium","low"].includes(x.confidence)?x.confidence:"medium",note:LANG==="ar"?(x.note_ar||x.note_en||""):(x.note_en||x.note_ar||""),per:est,est,estimated:!!est,usdaQ:key?null:(x.usda_query||x.name_en||"")};
 }
 function foodItem(f,grams){ return {uid:uid(),key:f.key,name_ar:f.ar,name_en:f.en,grams:grams||100,loR:1,hiR:1,conf:null,note:"",per:null} }
 
@@ -1171,7 +1211,7 @@ async function startPhoto(file){
   const dup = ED.hash && S.meals.find(m=>m.hash===ED.hash);
   if(dup) ED.dupOf = dup.id;
   if(!S.imgOK){ URL.revokeObjectURL(img.u); renderEditor(); return; }
-  const blob = await resize(img.im,1280,0.85,true); URL.revokeObjectURL(img.u);
+  const blob = await resize(img.im,1024,0.82,true); URL.revokeObjectURL(img.u);
   ED.retryBlob = blob;
   await runAI();
 }
@@ -1185,7 +1225,7 @@ async function runAI(){
     <button class="btn" type="button" data-act="manualFromPhoto">${esc(t("manualInstead"))}</button></div>`);
   const ctl = new AbortController(); ED.abort = ctl; const myED=ED;
   try{
-    const res = await analyze(ED.retryBlob, ctl.signal);
+    const res = await analyze(ED.retryBlob, ctl.signal, ED.hint);
     if(ED!==myED) return;
     ED.abort=null;
     if(!res || res.is_food===false || !Array.isArray(res.items) || !res.items.length){
@@ -1196,10 +1236,12 @@ async function runAI(){
     if(ED.method==="unknown") ED.method=null;
     ED.likelyFat=!!res.likely_added_fat;
     ED.conf=["high","medium","low"].includes(res.overall_confidence)?res.overall_confidence:"medium";
-    ED.summary={ar:res.summary_ar||"",en:res.summary_en||""};
-    ED.questions=(res.questions||[]).slice(0,3);
+    ED.summary={ar:(res.dish_ar?res.dish_ar+" — ":"")+(res.summary_ar||""),en:(res.dish_en?res.dish_en+" — ":"")+(res.summary_en||"")};
+    ED.questions=(res.questions||[]).slice(0,2);
     ED.retryFailed=false;
+    ED.resolving = ED.items.some(it=>!it.key);
     renderEditor();
+    if(ED.resolving){ await resolveUnknown(ED.items); if(ED!==myED) return; ED.resolving=false; readManualInputs(); renderEditor(); }
   }catch(e){
     if(ED!==myED) return;
     if(e && (e.code==="cancelled"||e.name==="AbortError")) return;
@@ -1221,7 +1263,10 @@ function renderEditor(){
     h+=`<div class="notice bad mt" style="display:grid;gap:8px"><b>${esc(t("dup"))}${d?` — ${esc(dateLabel(d.date))} ${esc(timeLabel(d.ts))}`:""}</b><div class="alt"><button class="btn sm" type="button" data-act="openMeal" data-id="${ED.dupOf}">${esc(t("dupOpen"))}</button><button class="btn sm" type="button" data-act="dupOK">${esc(t("dupSave"))}</button></div></div>`;
   }
   if(ED.aiError) h+=`<div class="notice warn mt" style="display:grid;gap:10px"><div>${esc(ED.aiError)}</div>${(ED.retryFailed&&ED.retryBlob&&S.imgOK)?`<button class="btn sm primary" type="button" data-act="retryAI">${LANG==="ar"?"حاول مرة أخرى":"Try again"}</button>`:""}</div>`;
-  if(ED.ai && ED.summary) h+=`<p class="mt" style="margin-bottom:0">${esc(LANG==="ar"?ED.summary.ar:ED.summary.en)}</p>`;
+  if(ED.ai && ED.summary) h+=`<p class="mt" style="margin-bottom:0"><b>${esc(LANG==="ar"?ED.summary.ar:ED.summary.en)}</b></p>`;
+  if(ED.retryBlob && S.imgOK && !editing) h+=`<div class="q mt" style="gap:8px"><label for="aiHint" style="font-weight:600;font-size:14px">${LANG==="ar"?(ED.ai?"التعرّف غلط؟ اكتب اسم الأكلة وأعد التحليل":"اكتب اسم الأكلة لتحليل أدق (اختياري)"):(ED.ai?"Wrong dish? Type its name and re-analyze":"Type the dish name for better accuracy (optional)")}</label>
+    <div style="display:flex;gap:8px"><input id="aiHint" value="${esc(ED.hint||"")}" placeholder="${LANG==="ar"?"مثلًا: كبسة دجاج، شاورما لحم، كشري":"e.g. chicken kabsa, beef shawarma"}" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--surface)"><button class="btn sm primary" type="button" data-act="hintAI">${LANG==="ar"?"حلّل":"Analyze"}</button></div></div>`;
+  if(ED.resolving) h+=`<div class="status"><span class="spin"></span>${LANG==="ar"?"أبحث عن الأصناف غير الموجودة في قاعدة USDA…":"Looking up other foods in USDA…"}</div>`;
   if(ED.ai) h+=`<p class="muted small" style="margin-block:6px 0">${esc(t("estimateNote"))}</p>`;
   h+=`<div class="estimate" aria-live="polite"><div class="row-b"><div><div class="kc">${fmt(tot.kcal)} <span style="font-size:15px;font-weight:500">${t("kcal")}</span></div>
     ${(ED.ai && Math.round(rg.hi)!==Math.round(rg.lo))?`<div class="rg">${esc(t("range"))}: <span class="num">${fmt(rg.lo)}–${fmt(rg.hi)}</span> ${t("kcal")}</div>`:""}</div></div>
@@ -1239,14 +1284,14 @@ function renderEditor(){
   ED.items.forEach(it=>{
     const f=foodByKey(it.key); const comp=itemComplete(it); const v=itemVals(it);
     h+=`<div class="item ${comp?"":"bad"}" data-uid="${it.uid}"><div class="r1"><div class="nm">${esc(LANG==="ar"?(it.name_ar||it.name_en):(it.name_en||it.name_ar))}
-      <div class="src ${f||it.per?"":"miss"}">${f? (f.src==="custom"?esc(t("custom")):esc(t("inDb"))+" · "+esc(fname(f))) : it.usda? "USDA FoodData Central (FDC "+esc(it.usda)+")" : it.per? esc(t("custom")) : esc(t("notInDb"))}</div></div>
+      <div class="src ${f||it.per?"":"miss"}" ${it.estimated?'style="color:var(--warn);font-weight:600"':""}>${f? (f.src==="custom"?esc(t("custom")):esc(t("inDb"))+" · "+esc(fname(f))) : it.usda? "USDA · "+esc(it.usdaName||("FDC "+it.usda)) : it.estimated? (LANG==="ar"?"تقدير Gemini (ليس من قاعدة بيانات) — اختر صنفًا من القائمة لدقة أعلى":"Gemini estimate (not from a database) — pick a listed food for accuracy") : it.per? esc(t("custom")) : (LANG==="ar"?"اختر الصنف من القائمة تحت":"Choose the food from the list below")}</div></div>
       ${it.conf?`<span class="conf ${it.conf}">${esc(t("confLevels")[it.conf])}</span>`:""}</div>
       <div class="r2"><div class="gin"><button type="button" data-act="g-" aria-label="-">−</button><input type="number" inputmode="decimal" min="0" step="1" value="${it.grams}" data-g="${it.uid}" aria-label="${esc(t("grams"))}"><button type="button" data-act="g+" aria-label="+">+</button></div><span class="muted small">${t("g")}${(it.loR!==1||it.hiR!==1)?` · <span class="num">${fmt(it.grams*it.loR)}–${fmt(it.grams*it.hiR)}</span>`:""}</span></div>
       ${comp?`<div class="vals num">${fmt(v.kcal)} ${t("kcal")} · P ${fmt1(v.p)} · C ${fmt1(v.c)} · F ${fmt1(v.f)}</div>`:""}
       ${it.note?`<div class="note">${esc(it.note)}</div>`:""}
-      ${!f && !it.addedOil && !it.usda? manualGrid("m_"+it.uid, it.per||{}) : ""}
+      ${(!f && !it.addedOil && it.cands && it.cands.length>1)? `<div class="results" style="max-height:none">${it.cands.map((c,ix)=>`<button type="button" data-act="pickCand" data-ix="${ix}" ${c.fdcId===it.usda?'style="outline:2px solid var(--accent)"':""}><span>${esc(c.name)}</span><span class="num">${fmt(c.per.kcal)} ${t("kcal")} · ${fmt1(c.per.p)}${t("g")} P</span></button>`).join("")}</div>`:""}
       <div class="r2">${it.addedOil?"":`<button class="link" type="button" data-act="swap">${esc(t("change"))}</button>`}<button class="link danger" type="button" data-act="rmItem">${esc(t("remove"))}</button></div>
-      <div class="swapBox" hidden></div>
+      <div class="swapBox" ${(!f && !it.per && !it.addedOil)?"data-auto":""} hidden></div>
     </div>`;
   });
   h+=`</div><div class="picker mt" id="picker">${pickerInner()}</div><div class="search mt"><input id="fsearch" type="search" placeholder="${esc(t("searchFood"))}" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:var(--surface)" aria-label="${esc(t("addItem"))}"><div class="results" id="fres"></div>${usdaBlock("add")}</div>`;
@@ -1256,6 +1301,7 @@ function renderEditor(){
   h+=`<div class="notice bad mt" id="edErr" hidden></div></div>
   <div class="footbar"><div class="in2"><button class="btn" type="button" data-act="close">${esc(t("cancel"))}</button><button class="btn primary" type="button" data-act="saveMeal" id="saveBtn" ${(ED.dupOf&&!ED.dupOK&&!editing)?"disabled":""}>${esc(t("save"))}</button></div></div>`;
   const sc = $(".sheet") ? $(".sheet").scrollTop : 0;
+  setTimeout(()=>document.querySelectorAll(".swapBox[data-auto]").forEach(bx=>{ if(bx.hidden){ const btn=bx.closest(".item").querySelector('[data-act="swap"]'); if(btn) btn.click(); } }),0);
   openSheet(h);
   $(".sheet").scrollTop = sc;
   if(ED.hasPhoto && editing && !ED.photoFull){ const id=ED.id; getPhoto(id).then(d=>{ if(ED&&ED.id===id&&d){ ED.photoFull=d; const el=$("#edPhoto"); if(el){ el.outerHTML=`<img class="photo" src="${d}" alt="${esc(t("photoAlt"))}">`; } } }); }
@@ -1305,7 +1351,7 @@ async function commitMeal(){
   }
   const btn=$("#saveBtn"); if(btn.disabled) return; btn.disabled=true; btn.textContent=t("saving");
   const tot=sumItems(ED.items); const rg=draftRange();
-  const items=ED.items.map(i=>{const o={key:i.key,name_ar:i.name_ar,name_en:i.name_en,grams:r1(+i.grams),loR:i.loR||1,hiR:i.hiR||1}; if(i.usda)o.usda=i.usda; if(i.conf)o.conf=i.conf; if(i.addedOil)o.addedOil=true; if(!i.key&&i.per)o.per=i.per; return o});
+  const items=ED.items.map(i=>{const o={key:i.key,name_ar:i.name_ar,name_en:i.name_en,grams:r1(+i.grams),loR:i.loR||1,hiR:i.hiR||1}; if(i.usda){o.usda=i.usda; if(i.usdaName)o.usdaName=i.usdaName;} if(i.estimated)o.estimated=true; if(i.conf)o.conf=i.conf; if(i.addedOil)o.addedOil=true; if(!i.key&&i.per)o.per=i.per; return o});
   const prev = ED.id ? S.meals.find(m=>m.id===ED.id) : null;
   const m={id:ED.id||uid(),ts,date:dkey(new Date(ts)),cat,items,totals:tot,range:ED.ai?{lo:r0(rg.lo),hi:r0(rg.hi)}:(prev&&prev.range)||null,
     ai:!!(ED.ai||(prev&&prev.ai)),conf:ED.conf||(prev&&prev.conf)||null,hash:ED.hash||(prev&&prev.hash)||null,hasPhoto:!!ED.hasPhoto,thumb:ED.thumb||(prev&&prev.thumb)||null,
@@ -1402,8 +1448,8 @@ document.addEventListener("click", async (e)=>{
         out.innerHTML= list.length? list.map((f,ix)=>`<button type="button" data-act="pickUsda" data-mode="${b.dataset.mode}" data-ix="${ix}"><span>${esc(f.name)}</span><span class="num">${fmt(f.per.kcal)} ${t("kcal")} · ${fmt1(f.per.p)}${t("g")} P</span></button>`).join("") : `<p class="muted small">${LANG==="ar"?"لا نتائج. جرّب كلمة إنجليزية أبسط.":"No results. Try a simpler word."}</p>`;
       }catch(err){ out.innerHTML=`<p class="small" style="color:var(--bad)">${esc(err.message)}</p>`; } break; }
     case "pickUsda": { readManualInputs(); const f=S.usdaRes&&S.usdaRes[+b.dataset.ix]; if(!f) break;
-      if(b.dataset.mode==="swap" && it){ it.key=null; it.per=f.per; it.usda=f.fdcId; it.name_en=f.name; if(LANG!=="ar"||!it.name_ar) it.name_ar=f.name; }
-      else ED.items.push({uid:uid(),key:null,name_ar:f.name,name_en:f.name,grams:100,loR:1,hiR:1,conf:null,note:"",per:f.per,usda:f.fdcId});
+      if(b.dataset.mode==="swap" && it){ it.key=null; it.per=f.per; it.usda=f.fdcId; it.usdaName=f.name; it.estimated=false; it.cands=null; }
+      else ED.items.push({uid:uid(),key:null,name_ar:f.name,name_en:f.name,grams:100,loR:1,hiR:1,conf:null,note:"",per:f.per,usda:f.fdcId,usdaName:f.name});
       renderEditor(); break; }
     case "exportBk": try{ await exportBackup(); }catch(err){ toast(err.message); } break;
     case "importBk": $("#bkInput").value=""; $("#bkInput").click(); break;
@@ -1427,13 +1473,15 @@ document.addEventListener("click", async (e)=>{
     case "oilType": readManualInputs(); ED.oilType=b.dataset.v; syncOilItem(); renderEditor(); break;
     case "g-": case "g+": if(it){ readManualInputs(); const step=it.grams>=100?10:5; it.grams=Math.max(0,Math.round((+it.grams||0)+(a==="g+"?step:-step))); renderEditor(); } break;
     case "rmItem": if(it){ readManualInputs(); ED.items=ED.items.filter(i=>i!==it); if(it.addedOil) ED.oil=0; renderEditor(); } break;
-    case "swap": if(it){ const box=itemEl.querySelector(".swapBox"); box.hidden=!box.hidden; if(!box.hidden){ box.innerHTML=`<input type="search" class="swapQ" placeholder="${esc(t("searchFood"))}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--surface)" aria-label="${esc(t("change"))}"><div class="results"></div>${usdaBlock("swap")}`; box.querySelector("input").value = (it.name_en||"").split(",")[0]; box.querySelector(".results").innerHTML=resultsHTML(searchFoods(box.querySelector("input").value),"pickSwap"); box.querySelector("input").focus(); } } break;
-    case "pickSwap": if(it){ readManualInputs(); const f=foodByKey(b.dataset.key); it.key=f.key; it.per=null; it.name_ar=f.ar; it.name_en=f.en; renderEditor(); } break;
+    case "swap": if(it){ const box=itemEl.querySelector(".swapBox"); box.hidden=!box.hidden; if(!box.hidden){ box.innerHTML=`<input type="search" class="swapQ" placeholder="${esc(t("searchFood"))}" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--surface)" aria-label="${esc(t("change"))}"><div class="results"></div>${usdaBlock("swap")}`; box.querySelector("input").value = (it.usdaQ||it.name_en||"").split(",")[0]; box.querySelector(".results").innerHTML=resultsHTML(searchFoods(box.querySelector("input").value),"pickSwap"); if(!foodByKey(it.key)){ const ub=box.querySelector('[data-act="usdaGo"]'); if(ub) ub.click(); } } } break;
+    case "pickSwap": if(it){ readManualInputs(); const f=foodByKey(b.dataset.key); it.key=f.key; it.per=null; it.est=null; it.estimated=false; it.usda=null; it.cands=null; it.name_ar=f.ar; it.name_en=f.en; renderEditor(); } break;
     case "pickAdd": { readManualInputs(); const f=foodByKey(b.dataset.key); ED.items.push(foodItem(f,100)); renderEditor(); const el=document.querySelector(`.item[data-uid="${ED.items[ED.items.length-1].uid}"] input[data-g]`); if(el){el.focus();el.select()} break; }
     case "pkAdd": { readManualInputs(); const pk=pickState(); const f=foodByKey(pk.key); const g=pickGrams(pk); if(!f||g<=0) break;
       const it2=foodItem(f,r1(g)); if(pk.unit!=="g") it2.note=`${pk.qty} × ${UNIT_NAMES[LANG][pk.unit]}`; ED.items.push(it2);
       ED.pick={group:pk.group,key:"",qty:1,unit:"g"}; renderEditor(); toast((LANG==="ar"?"أُضيف: ":"Added: ")+fname(f)); break; }
     case "retryAI": await runAI(); break;
+    case "hintAI": { const v=($("#aiHint")||{}).value||""; ED.hint=v.trim(); if(ED.abort) ED.abort.abort(); await runAI(); break; }
+    case "pickCand": if(it&&it.cands){ const c=it.cands[+b.dataset.ix]; if(c){ it.per=c.per; it.usda=c.fdcId; it.usdaName=c.name; it.estimated=false; renderEditor(); } } break;
     case "reanalyze": await reanalyze(); break;
     case "saveMeal": await commitMeal(); break;
     case "delAsk": $("#delBox").innerHTML=`<div class="confirm"><b>${esc(t("delConfirm"))}</b><div class="alt"><button class="btn" type="button" data-act="delNo">${esc(t("cancel"))}</button><button class="btn danger solid" type="button" data-act="delYes">${esc(t("yesDel"))}</button></div></div>`; break;
@@ -1457,13 +1505,14 @@ async function reanalyze(){
   try{
     const blob = await (await fetch(ED.photoFull)).blob();
     const prev = JSON.stringify(ED.items.map(i=>({key:i.key,name_en:i.name_en,grams:i.grams})));
-    const res = await geminiJSON(`Re-estimate the meal in the attached photo using the user's answers below. Current component list (user may have edited grams): ${prev}\nUser answers:\n${ans}\n\nKeep the same JSON shape as before: {"is_food":true,"items":[{"key","name_ar","name_en","grams","grams_low","grams_high","confidence","note_ar","note_en"}],"cooking_method","likely_added_fat","questions":[],"overall_confidence","summary_ar","summary_en"}. Use only keys from this DATABASE or null:\n${dbListForPrompt()}\nDo not output nutrient values. Return ONLY JSON.`,blob);
+    const res = await geminiJSON(buildPrompt(`\nRE-ESTIMATE using the user's answers. Current component list (grams may be user-edited): ${prev}\nUser answers:\n${ans}\nReturn questions as an empty array.\n`),blob);
     if(res && Array.isArray(res.items) && res.items.length){
       const oilItem=ED.items.find(i=>i.addedOil);
       ED.items=res.items.map(aiItem); if(oilItem) ED.items.push(oilItem);
       ED.conf=["high","medium","low"].includes(res.overall_confidence)?res.overall_confidence:ED.conf;
       if(res.summary_ar||res.summary_en) ED.summary={ar:res.summary_ar||"",en:res.summary_en||""};
       ED.questions=[]; ED.answers={};
+      await resolveUnknown(ED.items);
     }
     renderEditor();
   }catch(e){ btn.disabled=false; btn.textContent=t("analyzeFail"); }
