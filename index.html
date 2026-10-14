@@ -6,7 +6,7 @@
 <title>ProtiVue</title>
 <meta name="description" content="ProtiVue — تحليل الوجبات بالصور ومتابعة البروتين والسعرات">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#111821">
+<meta name="theme-color" content="#1E6B4B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ProtiVue">
@@ -341,6 +341,71 @@ button:active:not(:disabled){transform:scale(.96)}
 .shoot{background:var(--accent)}
 .toast{bottom:96px}
 @media (max-width:370px){.kc{grid-template-columns:1fr;justify-items:center}.vdiv{display:none}.kc-r{text-align:center}}
+
+/* ===== Onboarding ===== */
+.ob{position:fixed;inset:0;z-index:15;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.ob .in{max-width:520px;margin:0 auto;padding-inline:16px;padding-block:14px 132px;display:grid;gap:18px}
+.ob-top{display:flex;align-items:center;gap:12px}
+.ob-prog{flex:1;display:grid;gap:6px}
+.ob-prog .bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.ob-prog .bar span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.ob-prog p{margin:0;font-size:13px;color:var(--muted);font-weight:600}
+.ob h1{font-size:28px;font-weight:700;letter-spacing:-.01em;line-height:1.25}
+.ob .lead{color:var(--muted);font-size:16px;margin:0;line-height:1.6}
+.ob-hero{display:grid;justify-items:center;text-align:center;gap:16px;padding-block:7vh 8px}
+.ob-hero img{width:104px;height:104px;border-radius:26px;box-shadow:0 12px 30px color-mix(in srgb,var(--accent) 25%,transparent)}
+.ob-hero .brand2{font-size:32px}
+.ob-feats{display:grid;gap:10px;margin:0;padding:0;list-style:none;text-align:start}
+.ob-feats li{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;font-size:15px}
+.ob-feats .fi{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.ob-feats .fi svg{width:20px;height:20px}
+.ob-foot{position:fixed;inset-inline:0;bottom:0;z-index:16;background:var(--bg);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.ob-foot .in3{max-width:488px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap}
+.ob-foot .btn{flex:1;padding:15px;font-size:16px;font-weight:600;border-radius:14px}
+.ob-foot .btn.primary{flex:2}
+.ob-foot .ghost{flex-basis:100%;border:0;background:none;color:var(--accent);font-weight:600;padding:6px;font-size:15px}
+.goal-grid{display:grid;gap:10px}
+.goal{display:flex;gap:12px;align-items:center;text-align:start;width:100%;background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:14px;color:inherit}
+.goal[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.goal .gi{width:42px;height:42px;border-radius:12px;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--accent)}
+.goal[aria-checked="true"] .gi{background:var(--accent);color:var(--accent-ink)}
+.goal .gi svg{width:22px;height:22px}
+.goal b{display:block;font-size:16px}
+.goal small{color:var(--muted);font-size:13px}
+.ob .field input,.ob .field select{font-size:17px;padding:13px 14px;border-radius:12px;min-height:50px}
+.ob .field label{font-size:14px;font-weight:600}
+.ob .field .opt{font-weight:400;color:var(--muted)}
+.ob .field input[aria-invalid="true"],.ob .field select[aria-invalid="true"]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.ob .err{color:var(--bad);font-size:13px;font-weight:500;min-height:0}
+.ob .hint{color:var(--muted);font-size:12.5px}
+.ob fieldset{border:0;margin:0;padding:0;display:grid;gap:8px;min-width:0}
+.ob legend{font-size:14px;font-weight:600;padding:0;margin-bottom:8px}
+.segs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px}
+.segs button{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 6px;font-size:15px;font-weight:500;min-height:48px;color:inherit}
+.segs button[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.segs.days{grid-template-columns:repeat(8,minmax(0,1fr))}
+.segs.days button{padding:10px 0}
+.ob-sum{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:12px}
+.ob-sum .k{font-family:var(--f-display);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.ob-sum .k small{font-size:15px;font-weight:500;color:var(--muted)}
+.ob-sum .m3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ob-sum .m3 div{background:var(--surface-2);border-radius:12px;padding:10px;text-align:center}
+.ob-sum .m3 b{display:block;font-family:var(--f-display);font-size:18px;font-variant-numeric:tabular-nums}
+.ob-sum .m3 span{font-size:12px;color:var(--muted)}
+.ob-sum .note{font-size:13px;color:var(--muted);margin:0}
+.ob-sum.empty{color:var(--muted);text-align:center;border-style:dashed;font-size:14px}
+.ob-opts{display:grid;gap:10px}
+.ob-opt{display:flex;gap:14px;align-items:center;width:100%;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;color:inherit;min-height:72px}
+.ob-opt.main{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.ob-opt .oi{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.ob-opt.main .oi{background:color-mix(in srgb,var(--accent-ink) 18%,transparent);color:var(--accent-ink)}
+.ob-opt .oi svg{width:24px;height:24px}
+.ob-opt b{display:block;font-size:17px}
+.ob-opt small{font-size:13px;opacity:.8}
+.ob-opt[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.ob h1:focus{outline:none}
+.ob .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.ob-prog .bar span{transition:none}}
 </style>
 
 </head>
@@ -362,6 +427,7 @@ button:active:not(:disabled){transform:scale(.96)}
 <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
 <input type="file" id="galInput" accept="image/*" hidden>
 <input type="file" id="bkInput" accept="application/json,.json" hidden>
+<div id="obRoot"></div>
 <div id="sheetRoot"></div>
 <div id="toastRoot"></div>
 
@@ -1358,7 +1424,7 @@ async function commitMeal(){
     method:ED.method||null,createdAt:prev?prev.createdAt:Date.now(),updatedAt:Date.now()};
   try{
     await saveMeal(m, (!prev && ED.photoFull)? ED.photoFull : null);
-    const wasEdit=!!prev; closeSheet(); S.day=m.date; if(S.tab!=="report") S.tab="today"; renderAll(); toast(wasEdit?t("updated"):t("saved"));
+    const wasEdit=!!prev; closeSheet(); S.day=m.date; if(S.tab!=="report") S.tab="today"; renderAll(); if(!(await obAfterMealSaved())) toast(wasEdit?t("updated"):t("saved"));
   }catch(e){ btn.disabled=false; btn.textContent=t("save"); show((e&&e.message)||"Error"); }
 }
 function readManualInputs(){
@@ -1456,7 +1522,7 @@ document.addEventListener("click", async (e)=>{
     case "prevDay": S.day=addDays(S.day,-1); renderAll(); break;
     case "nextDay": if(S.day<todayKey()){ S.day=addDays(S.day,1); renderAll(); } break;
     case "gotoToday": S.day=b.dataset.k; renderAll(); break;
-    case "goProfile": S.tab="profile"; renderAll(); break;
+    case "goProfile": if(!profileComplete(S.profile)){ openOB(2); } else { S.tab="profile"; renderAll(); } break;
     case "camera": $("#camInput").value=""; $("#camInput").click(); break;
     case "gallery": $("#galInput").value=""; $("#galInput").click(); break;
     case "manual": ED=newDraft(); if(S.day!==todayKey()){ const d=parseKey(S.day); d.setHours(13,0); ED.ts=d.getTime(); ED.cat="lunch"; } renderEditor(); setTimeout(()=>$("#fsearch")&&$("#fsearch").focus(),50); break;
@@ -1559,17 +1625,197 @@ $("#camInput").addEventListener("change",e=>startPhoto(e.target.files[0]));
 $("#galInput").addEventListener("change",e=>startPhoto(e.target.files[0]));
 $("#langBtn").addEventListener("click",()=>{ LANG= LANG==="ar"?"en":"ar"; try{localStorage.setItem("protivue_lang",LANG)}catch(e){} renderAll(); if(ED) renderEditor(); });
 
+/* ============ Onboarding (welcome → goal & basics → first meal) ============ */
+const OB={open:false,step:1,draft:null,errors:{},state:{done:false,explored:false},awaitingMeal:false};
+const OBT={
+ ar:{step:(n)=>`${["١","٢","٣"][n-1]} من ٣`,title1:"اعرف أكلك، وقرّب لهدفك",lead1:"صوّر وجبتك أو أضفها يدويًا، وتابع السعرات والبروتين والتقدم.",
+   f1:"صوّر الوجبة وراجع المكونات والكميات",f2:"أهداف يومية للسعرات والبروتين حسب هدفك",f3:"تقارير يومية وأسبوعية لمتابعة التزامك",
+   start:"ابدأ",explore:"استكشف التطبيق",title2:"هدفك وبياناتك الأساسية",lead2:"نستخدمها لحساب احتياجك اليومي.",goal:"هدفك",
+   name:"الاسم",optional:"(اختياري)",age:"العمر",sex:"الجنس",height:"الطول (سم)",weight:"الوزن (كجم)",activity:"نشاطك اليومي خارج التمرين",train:"أيام التدريب في الأسبوع",
+   gsub:{cut:"تقليل الدهون مع الحفاظ على العضلات",maintain:"ثبات الوزن وتحسين الأداء",bulk:"بناء عضلات بفائض محسوب"},
+   sumTitle:"أهدافك اليومية",sumNote:"أهداف تقديرية يمكنك تعديلها لاحقًا من «الملف».",sumEmpty:"أكمل البيانات لتظهر أهدافك اليومية هنا.",
+   back:"رجوع",saveStart:"احفظ وابدأ",fixErr:"صحّح الحقول المحددة بالأحمر.",
+   eReq:"هذا الحقل مطلوب",eNum:"اكتب رقمًا صحيحًا",eRange:(a,b,u)=>`أدخل قيمة بين ${a} و${b}${u?" "+u:""}`,eGoal:"اختر هدفك",eSex:"اختر الجنس",
+   title3:"خلّينا نسجّل أول وجبة",lead3:"اختر الطريقة الأسهل لك. ستراجع المكونات والكميات قبل الحفظ.",
+   o1:"صوّر وجبتك",o1s:"التحليل تقديري وتراجعه قبل الحفظ",o2:"من المعرض",o2s:"اختر صورة وجبة من جهازك",o3:"إدخال يدوي",o3s:"اختر الأصناف والكميات من القوائم",
+   noAI:"تحليل الصور غير متاح حاليًا. سجّل وجبتك يدويًا الآن، ويمكنك تفعيل التحليل لاحقًا من «الملف».",
+   later:"سأضيفها لاحقًا",firstMeal:"تم تسجيل أول وجبة",saved:"حُفظ ملفك وأهدافك",
+   resume:"أكمل إعدادك لحساب أهدافك اليومية.",resumeBtn:"أكمل الإعداد"},
+ en:{step:(n)=>`${n} of 3`,title1:"Know your food. Hit your goal.",lead1:"Snap your meal or add it manually, and track calories, protein and progress.",
+   f1:"Snap a meal and review components and amounts",f2:"Daily calorie and protein targets for your goal",f3:"Daily and weekly reports to track your consistency",
+   start:"Get started",explore:"Explore the app",title2:"Your goal and basics",lead2:"We use these to estimate your daily needs.",goal:"Your goal",
+   name:"Name",optional:"(optional)",age:"Age",sex:"Sex",height:"Height (cm)",weight:"Weight (kg)",activity:"Daily activity outside training",train:"Training days per week",
+   gsub:{cut:"Lose fat while keeping muscle",maintain:"Hold your weight, improve performance",bulk:"Build muscle with a measured surplus"},
+   sumTitle:"Your daily targets",sumNote:"Estimated targets you can adjust later in Profile.",sumEmpty:"Complete your details to see your daily targets here.",
+   back:"Back",saveStart:"Save and start",fixErr:"Fix the fields marked in red.",
+   eReq:"This field is required",eNum:"Enter a valid number",eRange:(a,b,u)=>`Enter a value from ${a} to ${b}${u?" "+u:""}`,eGoal:"Choose your goal",eSex:"Choose your sex",
+   title3:"Let's log your first meal",lead3:"Pick the easiest way. You'll review components and amounts before saving.",
+   o1:"Snap your meal",o1s:"Analysis is an estimate you review before saving",o2:"From gallery",o2s:"Pick a meal photo from your device",o3:"Manual entry",o3s:"Pick foods and amounts from lists",
+   noAI:"Photo analysis isn't available right now. Log your meal manually now; you can turn on analysis later in Profile.",
+   later:"I'll add it later",firstMeal:"First meal logged",saved:"Profile and targets saved",
+   resume:"Finish setup to calculate your daily targets.",resumeBtn:"Finish setup"}
+};
+const ob=(k)=>OBT[LANG][k];
+const OB_ICONS={
+ cut:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l6 6 4-4 6 6"/><path d="M20 11v4h-4"/></svg>',
+ maintain:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h16M4 8h16M4 16h16" opacity=".35"/><path d="M4 12h16"/></svg>',
+ bulk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 6.5l11 11M4 9l5-5M15 20l5-5M3 11l2 2M11 3l2 2M11 21l2-2M19 11l2 2"/></svg>',
+ target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+ chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-7"/></svg>',
+ img:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></svg>',
+ list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>'
+};
+/* Accept Arabic-Indic and Persian digits, Arabic decimal separator, and comma. */
+function normNum(v){ return String(v==null?"":v).trim().replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٫,]/g,".").replace(/\s+/g,""); }
+function parseNum(v){ const n=normNum(v); if(n==="") return {empty:true}; if(!/^\d+(\.\d+)?$/.test(n)) return {bad:true}; return {val:+n}; }
+function profileComplete(p){ return !!(p && p.age && p.sex && p.height && p.weight && p.goal); }
+async function saveOB(){ if(P()) { try{ await IDB.put("kv",{k:"onboard",v:OB.state}); }catch(e){} } }
+function obDraftFrom(p){ p=p||{}; return {goal:p.goal||"",name:p.name||"",age:p.age!=null?String(p.age):"",sex:p.sex||"",height:p.height!=null?String(p.height):"",weight:p.weight!=null?String(p.weight):"",activity:p.activity||"sedentary",trainDays:p.trainDays!=null?+p.trainDays:3}; }
+const OB_RANGES={age:[14,90,""],height:[120,230,"سم|cm"],weight:[35,250,"كجم|kg"]};
+function obValidate(d,only){
+  const e={};
+  const chk=(k)=>{ const [a,b,u]=OB_RANGES[k]; const r=parseNum(d[k]); const unit=u?u.split("|")[LANG==="ar"?0:1]:"";
+    if(r.empty) e[k]=ob("eReq"); else if(r.bad) e[k]=ob("eNum"); else if(r.val<a||r.val>b) e[k]=ob("eRange")(a,b,unit); };
+  ["age","height","weight"].forEach(k=>{ if(!only||only===k) chk(k); });
+  if((!only||only==="goal") && !d.goal) e.goal=ob("eGoal");
+  if((!only||only==="sex") && !d.sex) e.sex=ob("eSex");
+  return e;
+}
+function obProfile(d){ return {goal:d.goal,name:(d.name||"").trim(),age:Math.round(parseNum(d.age).val),sex:d.sex,height:Math.round(parseNum(d.height).val*10)/10,weight:Math.round(parseNum(d.weight).val*10)/10,activity:d.activity,trainDays:+d.trainDays}; }
+function openOB(step){ OB.open=true; OB.step=step||1; if(!OB.draft) OB.draft=obDraftFrom(S.profile); OB.errors={}; renderOB(true); document.body.style.overflow="hidden"; }
+function closeOB(){ OB.open=false; OB.awaitingMeal=false; $("#obRoot").innerHTML=""; if(!$(".sheet")) document.body.style.overflow=""; renderAll(); }
+function obHead(){
+  const back = OB.step>1 ? `<button class="x" type="button" data-ob="back" aria-label="${esc(ob("back"))}">${LANG==="ar"?"→":"←"}</button>` : "";
+  return `<div class="ob-top">${back}<div class="ob-prog"><p id="obStepTxt" aria-live="polite">${esc(ob("step")(OB.step))}</p><div class="bar" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="${OB.step}" aria-labelledby="obStepTxt"><span style="width:${OB.step/3*100}%"></span></div></div><button class="chip-btn" type="button" data-ob="lang">${esc(t("langBtn"))}</button></div>`;
+}
+function obSummaryHTML(){
+  const d=OB.draft; const errs=obValidate(d);
+  if(Object.keys(errs).length) return `<div class="ob-sum empty" id="obSum" aria-live="polite">${esc(ob("sumEmpty"))}</div>`;
+  const r=calcTargets(Object.assign({},obProfile(d),{useOverride:false})); if(!r) return `<div class="ob-sum empty" id="obSum">${esc(ob("sumEmpty"))}</div>`;
+  const c=r.calc;
+  return `<div class="ob-sum" id="obSum" aria-live="polite"><div><div class="muted small" style="font-weight:600">${esc(ob("sumTitle"))}</div><div class="k">${fmt(c.kcal)} <small>${t("kcal")}</small></div></div>
+    <div class="m3"><div><b style="color:var(--prot)">${fmt(c.p)}</b><span>${esc(t("protein"))} (${t("g")})</span></div><div><b style="color:var(--carb)">${fmt(c.c)}</b><span>${esc(t("carbs"))} (${t("g")})</span></div><div><b style="color:var(--fat)">${fmt(c.f)}</b><span>${esc(t("fat"))} (${t("g")})</span></div></div>
+    <p class="note">${esc(ob("sumNote"))}</p></div>`;
+}
+function obField(k,label,opt){
+  const err=OB.errors[k]; const d=OB.draft;
+  const num = k!=="name";
+  return `<div class="field"><label for="ob_${k}">${esc(label)}${opt?` <span class="opt">${esc(ob("optional"))}</span>`:""}</label>
+    <input id="ob_${k}" data-obf="${k}" value="${esc(d[k]||"")}" ${num?'inputmode="decimal" autocomplete="off" dir="ltr"':'autocomplete="given-name" maxlength="30"'} ${err?'aria-invalid="true"':""} aria-describedby="ob_${k}_err">
+    <div class="err" id="ob_${k}_err" role="alert">${err?esc(err):""}</div></div>`;
+}
+function renderOB(focus){
+  if(!OB.open) return;
+  const ar=LANG==="ar"; let h="", foot="";
+  if(OB.step===1){
+    h=`${obHead()}<div class="ob-hero"><img src="icons/icon-192.png" alt="" width="104" height="104"><div class="brand2" aria-hidden="true">ProtiVue</div>
+      <h1 id="obTitle" tabindex="-1">${esc(ob("title1"))}</h1><p class="lead">${esc(ob("lead1"))}</p></div>
+      <ul class="ob-feats"><li><span class="fi">${ICONS.cam}</span>${esc(ob("f1"))}</li><li><span class="fi">${OB_ICONS.target}</span>${esc(ob("f2"))}</li><li><span class="fi">${OB_ICONS.chart}</span>${esc(ob("f3"))}</li></ul>`;
+    foot=`<button class="btn primary" type="button" data-ob="next1">${esc(ob("start"))}</button><button class="ghost" type="button" data-ob="explore">${esc(ob("explore"))}</button>`;
+  } else if(OB.step===2){
+    const d=OB.draft, e=OB.errors;
+    h=`${obHead()}<div><h1 id="obTitle" tabindex="-1">${esc(ob("title2"))}</h1><p class="lead">${esc(ob("lead2"))}</p></div>
+    <fieldset><legend id="obGoalL">${esc(ob("goal"))}</legend><div class="goal-grid" role="radiogroup" aria-labelledby="obGoalL" ${e.goal?'aria-invalid="true" aria-describedby="ob_goal_err"':""}>
+      ${["cut","maintain","bulk"].map(g=>`<button type="button" class="goal" role="radio" aria-checked="${d.goal===g}" data-obgoal="${g}" ${e.goal?'style="border-color:var(--bad)"':""}><span class="gi">${OB_ICONS[g]}</span><span><b>${esc(t("goals")[g])}</b><small>${esc(ob("gsub")[g])}</small></span></button>`).join("")}
+    </div><div class="err" id="ob_goal_err" role="alert">${e.goal?esc(e.goal):""}</div></fieldset>
+    ${obField("name",ob("name"),true)}
+    <fieldset><legend id="obSexL">${esc(ob("sex"))}</legend><div class="segs" role="radiogroup" aria-labelledby="obSexL" ${e.sex?'aria-describedby="ob_sex_err"':""}>
+      ${[["male",t("male")],["female",t("female")]].map(([v,l])=>`<button type="button" role="radio" aria-checked="${d.sex===v}" data-obsex="${v}" ${e.sex?'style="border-color:var(--bad)"':""}>${esc(l)}</button>`).join("")}
+    </div><div class="err" id="ob_sex_err" role="alert">${e.sex?esc(e.sex):""}</div></fieldset>
+    ${obField("age",ob("age"))}
+    <div class="grid2">${obField("height",ob("height"))}${obField("weight",ob("weight"))}</div>
+    <div class="field"><label for="ob_activity">${esc(ob("activity"))}</label><select id="ob_activity" data-obf="activity">${Object.entries(t("acts")).map(([v,l])=>`<option value="${v}" ${d.activity===v?"selected":""}>${esc(l)}</option>`).join("")}</select></div>
+    <fieldset><legend id="obTrL">${esc(ob("train"))}</legend><div class="segs days" role="radiogroup" aria-labelledby="obTrL">
+      ${[0,1,2,3,4,5,6,7].map(n=>`<button type="button" role="radio" aria-checked="${+d.trainDays===n}" data-obdays="${n}">${n}</button>`).join("")}
+    </div></fieldset>
+    ${obSummaryHTML()}
+    <div class="notice bad" id="obErrAll" role="alert" ${Object.keys(e).length?"":"hidden"}>${esc(ob("fixErr"))}</div>`;
+    foot=`<button class="btn" type="button" data-ob="back">${esc(ob("back"))}</button><button class="btn primary" type="button" data-ob="save">${esc(ob("saveStart"))}</button>`;
+  } else {
+    const ai=S.imgOK;
+    h=`${obHead()}<div><h1 id="obTitle" tabindex="-1">${esc(ob("title3"))}</h1><p class="lead">${esc(ob("lead3"))}</p></div>
+    ${ai?"":`<div class="notice warn" role="status">${esc(ob("noAI"))}</div>`}
+    <div class="ob-opts">
+      ${ai?"":`<button class="ob-opt main" type="button" data-ob="manual"><span class="oi">${OB_ICONS.list}</span><span><b>${esc(ob("o3"))}</b><small>${esc(ob("o3s"))}</small></span></button>`}
+      <button class="ob-opt ${ai?"main":""}" type="button" data-ob="camera" ${ai?"":'aria-disabled="true"'}><span class="oi">${ICONS.cam}</span><span><b>${esc(ob("o1"))}</b><small>${esc(ai?ob("o1s"):ob("noAI").split(/[.،]/)[0])}</small></span></button>
+      <button class="ob-opt" type="button" data-ob="gallery" ${ai?"":'aria-disabled="true"'}><span class="oi">${OB_ICONS.img}</span><span><b>${esc(ob("o2"))}</b><small>${esc(ob("o2s"))}</small></span></button>
+      ${ai?`<button class="ob-opt" type="button" data-ob="manual"><span class="oi">${OB_ICONS.list}</span><span><b>${esc(ob("o3"))}</b><small>${esc(ob("o3s"))}</small></span></button>`:""}
+    </div>`;
+    foot=`<button class="ghost" type="button" data-ob="later">${esc(ob("later"))}</button>`;
+  }
+  $("#obRoot").innerHTML=`<div class="ob" role="dialog" aria-modal="true" aria-labelledby="obTitle"><div class="in">${h}</div></div><div class="ob-foot"><div class="in3">${foot}</div></div>`;
+  if(focus){ const tt=$("#obTitle"); if(tt) tt.focus({preventScroll:true}); const sc=$(".ob"); if(sc) sc.scrollTop=0; }
+}
+function obRefreshField(k){
+  const e=obValidate(OB.draft,k)[k]; if(e) OB.errors[k]=e; else delete OB.errors[k];
+  const inp=$("#ob_"+k), er=$("#ob_"+k+"_err");
+  if(inp){ if(e) inp.setAttribute("aria-invalid","true"); else inp.removeAttribute("aria-invalid"); }
+  if(er) er.textContent=e||"";
+  const all=$("#obErrAll"); if(all) all.hidden=!Object.keys(OB.errors).length;
+}
+async function obAct(a,b){
+  if(a==="lang"){ LANG=LANG==="ar"?"en":"ar"; try{localStorage.setItem("protivue_lang",LANG)}catch(e){} renderAll(); renderOB(); return; }
+  if(a==="next1"){ OB.step=2; renderOB(true); return; }
+  if(a==="explore"){ OB.state.explored=true; await saveOB(); closeOB(); return; }
+  if(a==="back"){ OB.errors={}; if(OB.step>1){ OB.step--; renderOB(true); } return; }
+  if(a==="save"){
+    OB.errors=obValidate(OB.draft); 
+    if(Object.keys(OB.errors).length){ renderOB(); const first=document.querySelector('.ob [aria-invalid="true"], .ob .goal[style*="--bad"], .ob .segs [style*="--bad"]'); if(first) first.focus(); return; }
+    const np=Object.assign({}, S.profile||{}, obProfile(OB.draft));
+    if(np.useOverride==null) np.useOverride=false;
+    b.disabled=true;
+    try{ await saveProfile(np); toast(ob("saved")); OB.step=3; renderOB(true); }catch(err){ b.disabled=false; toast(err.message||"Error"); }
+    return;
+  }
+  if(a==="later"){ OB.state.done=true; await saveOB(); closeOB(); S.tab="today"; renderAll(); return; }
+  if(a==="camera"||a==="gallery"){ if(b.getAttribute("aria-disabled")==="true") return; OB.awaitingMeal=true; const inp=$(a==="camera"?"#camInput":"#galInput"); inp.value=""; inp.click(); return; }
+  if(a==="manual"){ OB.awaitingMeal=true; ED=newDraft(); renderEditor(); setTimeout(()=>{ const g=$("#pkGroup"); if(g) g.focus(); },60); return; }
+}
+document.addEventListener("click",async (e)=>{
+  if(!OB.open) return;
+  const t0=e.target.closest("[data-ob],[data-obgoal],[data-obsex],[data-obdays]"); if(!t0 || !t0.closest("#obRoot")) return;
+  if(t0.dataset.ob) return obAct(t0.dataset.ob,t0);
+  if(t0.dataset.obgoal){ OB.draft.goal=t0.dataset.obgoal; delete OB.errors.goal; }
+  if(t0.dataset.obsex){ OB.draft.sex=t0.dataset.obsex; delete OB.errors.sex; }
+  if(t0.dataset.obdays!=null){ OB.draft.trainDays=+t0.dataset.obdays; }
+  const key = t0.dataset.obgoal?"obgoal":t0.dataset.obsex?"obsex":"obdays", val=t0.dataset[key];
+  renderOB(); const again=document.querySelector(`#obRoot [data-${key}="${val}"]`); if(again) again.focus();
+});
+/* Arrow keys move between radio buttons in the custom radio groups. */
+document.addEventListener("keydown",(e)=>{
+  if(!OB.open) return; const r=e.target.closest && e.target.closest('#obRoot [role="radio"]'); if(!r) return;
+  const keys=LANG==="ar"?{ArrowLeft:1,ArrowRight:-1,ArrowDown:1,ArrowUp:-1}:{ArrowLeft:-1,ArrowRight:1,ArrowDown:1,ArrowUp:-1};
+  if(!(e.key in keys)) return; e.preventDefault();
+  const all=[...r.closest('[role="radiogroup"]').querySelectorAll('[role="radio"]')]; const i=all.indexOf(r); const n=all[(i+keys[e.key]+all.length)%all.length]; n.click();
+});
+document.addEventListener("input",(e)=>{
+  const k=e.target.dataset && e.target.dataset.obf; if(!k||!OB.open) return;
+  OB.draft[k]=e.target.value;
+  if(OB.errors[k]) obRefreshField(k);
+  const sum=$("#obSum"); if(sum) sum.outerHTML=obSummaryHTML();
+});
+document.addEventListener("change",(e)=>{ const k=e.target.dataset && e.target.dataset.obf; if(!k||!OB.open) return; OB.draft[k]=e.target.value; if(k!=="name"&&k!=="activity") obRefreshField(k); const sum=$("#obSum"); if(sum) sum.outerHTML=obSummaryHTML(); });
+document.addEventListener("focusout",(e)=>{ const k=e.target.dataset && e.target.dataset.obf; if(!k||!OB.open||k==="name"||k==="activity") return; if(String(OB.draft[k]||"").trim()!=="") obRefreshField(k); });
+/* Called after any meal is saved: finishes onboarding if it was waiting for the first meal. */
+async function obAfterMealSaved(){
+  if(!OB.open || !OB.awaitingMeal) return false;
+  OB.state.done=true; await saveOB(); closeOB(); S.tab="today"; renderAll(); toast(ob("firstMeal")); return true;
+}
+
 /* ============ boot ============ */
 $("#bkInput").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; try{ await importBackup(f); toast(LANG==="ar"?"استُوردت النسخة":"Backup imported"); }catch(err){ toast(err.message); } });
 renderAll();
 (async function boot(){
   try{
     await IDB.open(); S.persist=true;
-    const [meals,foods,weights,prof,cfg]=await Promise.all([IDB.all("meals"),IDB.all("foods"),IDB.all("weights"),IDB.get("kv","profile"),IDB.get("kv","cfg")]);
+    const [meals,foods,weights,prof,cfg,obs]=await Promise.all([IDB.all("meals"),IDB.all("foods"),IDB.all("weights"),IDB.get("kv","profile"),IDB.get("kv","cfg"),IDB.get("kv","onboard")]);
+    if(obs&&obs.v) OB.state=Object.assign(OB.state,obs.v);
     S.meals=meals||[]; S.foods=foods||[]; S.weights=weights||[]; S.profile=prof?prof.v:null; if(cfg) S.cfg=Object.assign(S.cfg,cfg.v); if(S.cfg.model==="gemini-flash-latest") S.cfg.model=DEFAULT_MODEL;
     try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   }catch(e){ S.persist=false; }
   S.imgOK=!!S.cfg.geminiKey; S.ready=true; renderAll();
+  if(profileComplete(S.profile) && !OB.state.done){ OB.state.done=true; saveOB(); }   // existing users go straight in
+  if(!profileComplete(S.profile) && !OB.state.done && !OB.state.explored) openOB(1);
   if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 })();
 </script>
