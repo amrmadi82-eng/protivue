@@ -1,6 +1,6 @@
 // ProtiVue service worker: app works offline (manual entry, history, reports).
 // Photo analysis and USDA search always go to the network.
-const CACHE = "protivue-v1";
+const CACHE = "protivue-v2";
 const SHELL = [
   "./",
   "./index.html",

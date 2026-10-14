@@ -657,7 +657,7 @@ function toast(msg){const r=$("#toastRoot");r.innerHTML=`<div class="toast" role
 
 /* ============ state ============ */
 const S = {
-  persist:false, cfg:{geminiKey:"",model:"gemini-flash-latest",usdaKey:""}, usdaRes:[], imgOK:false, ready:false,
+  persist:false, cfg:{geminiKey:"",model:"gemini-3.6-flash",usdaKey:""}, usdaRes:[], imgOK:false, ready:false,
   profile:null, meals:[], foods:[], weights:[],
   tab:"today", day:todayKey(), period:7,
   mem:{photos:{}} // fallback when storage is unavailable
@@ -778,7 +778,7 @@ async function hashFile(file){
 
 /* ============ analysis ============ */
 function dbListForPrompt(){ return allFoods().map(f=>`${f.key} | ${f.en} | ${f.ar}`).join("\n") }
-async function analyze(blob, signal){
+async function analyze(blob, signal){ /* prompt below */
   const prompt = `You are a careful food-photo analyst for a nutrition tracker used by bodybuilders.
 Look at the attached meal photo. Identify every distinct food component that is visible, and estimate the edible weight in grams of each, with a realistic low/high range. Use visual size cues (plate ~26 cm, cutlery, hand, packaging) when present.
 
@@ -797,26 +797,49 @@ Return ONLY JSON with this shape:
  "overall_confidence":"high|medium|low",
  "summary_ar":"one sentence","summary_en":"one sentence"}
 Ask at most 3 short questions, only ones whose answer would change the numbers (portion size, sauce, mixed dish contents). Do not ask about cooking oil or cooking method; the app asks those itself. If the photo shows no food, return {"is_food": false, "items": []}.`;
-  return await geminiJSON(prompt,blob,signal);
+  return await geminiJSON(prompt,blob,signal,(msg)=>{ const st=document.querySelector(".sheet .status"); if(st) st.innerHTML=`<span class="spin"></span>${esc(msg)}`; });
 }
 
 /* ============ Gemini (free tier) + USDA online ============ */
-const DEFAULT_MODEL="gemini-flash-latest";
+const DEFAULT_MODEL="gemini-3.6-flash";
 function blobToB64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); }); }
-async function geminiJSON(prompt,blob,signal){
-  const b64=await blobToB64(blob);
-  const model=(S.cfg.model||DEFAULT_MODEL).trim();
+const FALLBACK_MODELS=["gemini-3.6-flash","gemini-3.5-flash-lite","gemini-3.1-flash-lite","gemini-flash-latest"];
+const sleep=(ms,signal)=>new Promise((res,rej)=>{ const t0=setTimeout(res,ms); if(signal) signal.addEventListener("abort",()=>{clearTimeout(t0);rej(Object.assign(new Error("aborted"),{name:"AbortError"}))},{once:true}); });
+async function geminiOnce(model,prompt,b64,mime,signal){
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
     method:"POST",signal,headers:{"Content-Type":"application/json","x-goog-api-key":S.cfg.geminiKey.trim()},
-    body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt},{inline_data:{mime_type:blob.type||"image/jpeg",data:b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:0.2}})});
+    body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt},{inline_data:{mime_type:mime,data:b64}}]}],generationConfig:{responseMimeType:"application/json",temperature:0.2}})});
   if(!r.ok){ let msg=""; try{ const j=await r.json(); msg=j.error&&j.error.message; }catch(_){} const e=new Error(msg||("HTTP "+r.status)); e.status=r.status; throw e; }
   const j=await r.json();
   const txt=((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||"").join("").trim();
-  if(!txt) throw new Error(LANG==="ar"?"لم يرجع التحليل نتيجة":"Empty response");
+  if(!txt){ const e=new Error(LANG==="ar"?"لم يرجع التحليل نتيجة":"Empty response"); e.status=502; throw e; }
   return JSON.parse(txt.replace(/^```(?:json)?\s*/,"").replace(/```\s*$/,""));
+}
+/* Tries the chosen model, retries briefly when Google's free servers are busy, then falls back to other free Flash models. */
+async function geminiJSON(prompt,blob,signal,onStatus){
+  const b64=await blobToB64(blob); const mime=blob.type||"image/jpeg";
+  const chain=[...new Set([(S.cfg.model||DEFAULT_MODEL).trim(),...FALLBACK_MODELS])];
+  let last;
+  for(let m=0;m<chain.length;m++){
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        if(onStatus && (m>0||attempt>0)) onStatus(LANG==="ar"?`الخادم مزدحم، جارٍ المحاولة مرة أخرى (${m*2+attempt+1})…`:`Server busy, retrying (${m*2+attempt+1})…`);
+        return await geminiOnce(chain[m],prompt,b64,mime,signal);
+      }catch(e){
+        if(e.name==="AbortError") throw e;
+        last=e;
+        if(e.status===400||e.status===401||e.status===403) throw e;      // key problem: no point retrying
+        if(e instanceof SyntaxError) break;                                // bad JSON: try next model
+        if(e.status===503||e.status===500||e.status===502){ await sleep(1500*(attempt+1),signal); continue; }
+        break;                                                             // 429 / 404 / other: next model
+      }
+    }
+  }
+  throw last||new Error("Gemini");
 }
 function aiErrMsg(e){
   const ar=LANG==="ar";
+  if(e&&(e.status===503||e.status===500||e.status===502)) return ar?" — خوادم Gemini المجانية مزدحمة الآن. اضغط «حاول مرة أخرى» بعد دقيقة، أو أدخل الوجبة يدويًا.":" — Gemini's free servers are busy right now. Tap 'Try again' in a minute, or enter the meal manually.";
   if(e&&e.status===429) return ar?" — تجاوزت الحد المجاني المؤقت لـGemini. انتظر دقيقة وحاول مرة أخرى، أو أدخل الوجبة يدويًا.":" — Gemini free-tier limit reached. Wait a minute and retry, or enter it manually.";
   if(e&&(e.status===400||e.status===401||e.status===403)) return (ar?" — تحقق من مفتاح Gemini واسم النموذج في الإعدادات. ":" — check your Gemini key and model name in Settings. ")+(e.message?`(${e.message})`:"");
   if(e&&e.status===404) return ar?" — اسم النموذج غير موجود. غيّره من الإعدادات.":" — model not found. Change it in Settings.";
@@ -1148,15 +1171,21 @@ async function startPhoto(file){
   const dup = ED.hash && S.meals.find(m=>m.hash===ED.hash);
   if(dup) ED.dupOf = dup.id;
   if(!S.imgOK){ URL.revokeObjectURL(img.u); renderEditor(); return; }
+  const blob = await resize(img.im,1280,0.85,true); URL.revokeObjectURL(img.u);
+  ED.retryBlob = blob;
+  await runAI();
+}
+async function runAI(){
+  if(!ED||!ED.retryBlob) return;
+  ED.aiError=null;
   openSheet(`<div class="in"><div class="hd"><button class="x" type="button" data-act="close" aria-label="${esc(t("cancel"))}">×</button><h2>${esc(t("ai"))}</h2></div>
     <div class="scan"><img class="photo" src="${ED.photoFull}" alt="${esc(t("photoAlt"))}"></div>
     <div class="status" role="status"><span class="spin"></span>${esc(t("analyzing"))}</div>
     <p class="muted small">${esc(t("estimateNote"))}</p>
     <button class="btn" type="button" data-act="manualFromPhoto">${esc(t("manualInstead"))}</button></div>`);
-  const blob = await resize(img.im,1280,0.85,true); URL.revokeObjectURL(img.u);
   const ctl = new AbortController(); ED.abort = ctl; const myED=ED;
   try{
-    const res = await analyze(blob, ctl.signal);
+    const res = await analyze(ED.retryBlob, ctl.signal);
     if(ED!==myED) return;
     ED.abort=null;
     if(!res || res.is_food===false || !Array.isArray(res.items) || !res.items.length){
@@ -1169,11 +1198,12 @@ async function startPhoto(file){
     ED.conf=["high","medium","low"].includes(res.overall_confidence)?res.overall_confidence:"medium";
     ED.summary={ar:res.summary_ar||"",en:res.summary_en||""};
     ED.questions=(res.questions||[]).slice(0,3);
+    ED.retryFailed=false;
     renderEditor();
   }catch(e){
     if(ED!==myED) return;
     if(e && (e.code==="cancelled"||e.name==="AbortError")) return;
-    ED.abort=null; ED.ai=false;
+    ED.abort=null; ED.ai=false; ED.retryFailed=true;
     ED.aiError = t("analyzeFail") + aiErrMsg(e);
     renderEditor();
   }
@@ -1190,7 +1220,7 @@ function renderEditor(){
     const d=S.meals.find(m=>m.id===ED.dupOf);
     h+=`<div class="notice bad mt" style="display:grid;gap:8px"><b>${esc(t("dup"))}${d?` — ${esc(dateLabel(d.date))} ${esc(timeLabel(d.ts))}`:""}</b><div class="alt"><button class="btn sm" type="button" data-act="openMeal" data-id="${ED.dupOf}">${esc(t("dupOpen"))}</button><button class="btn sm" type="button" data-act="dupOK">${esc(t("dupSave"))}</button></div></div>`;
   }
-  if(ED.aiError) h+=`<div class="notice warn mt">${esc(ED.aiError)}</div>`;
+  if(ED.aiError) h+=`<div class="notice warn mt" style="display:grid;gap:10px"><div>${esc(ED.aiError)}</div>${(ED.retryFailed&&ED.retryBlob&&S.imgOK)?`<button class="btn sm primary" type="button" data-act="retryAI">${LANG==="ar"?"حاول مرة أخرى":"Try again"}</button>`:""}</div>`;
   if(ED.ai && ED.summary) h+=`<p class="mt" style="margin-bottom:0">${esc(LANG==="ar"?ED.summary.ar:ED.summary.en)}</p>`;
   if(ED.ai) h+=`<p class="muted small" style="margin-block:6px 0">${esc(t("estimateNote"))}</p>`;
   h+=`<div class="estimate" aria-live="polite"><div class="row-b"><div><div class="kc">${fmt(tot.kcal)} <span style="font-size:15px;font-weight:500">${t("kcal")}</span></div>
@@ -1403,6 +1433,7 @@ document.addEventListener("click", async (e)=>{
     case "pkAdd": { readManualInputs(); const pk=pickState(); const f=foodByKey(pk.key); const g=pickGrams(pk); if(!f||g<=0) break;
       const it2=foodItem(f,r1(g)); if(pk.unit!=="g") it2.note=`${pk.qty} × ${UNIT_NAMES[LANG][pk.unit]}`; ED.items.push(it2);
       ED.pick={group:pk.group,key:"",qty:1,unit:"g"}; renderEditor(); toast((LANG==="ar"?"أُضيف: ":"Added: ")+fname(f)); break; }
+    case "retryAI": await runAI(); break;
     case "reanalyze": await reanalyze(); break;
     case "saveMeal": await commitMeal(); break;
     case "delAsk": $("#delBox").innerHTML=`<div class="confirm"><b>${esc(t("delConfirm"))}</b><div class="alt"><button class="btn" type="button" data-act="delNo">${esc(t("cancel"))}</button><button class="btn danger solid" type="button" data-act="delYes">${esc(t("yesDel"))}</button></div></div>`; break;
@@ -1486,7 +1517,7 @@ renderAll();
   try{
     await IDB.open(); S.persist=true;
     const [meals,foods,weights,prof,cfg]=await Promise.all([IDB.all("meals"),IDB.all("foods"),IDB.all("weights"),IDB.get("kv","profile"),IDB.get("kv","cfg")]);
-    S.meals=meals||[]; S.foods=foods||[]; S.weights=weights||[]; S.profile=prof?prof.v:null; if(cfg) S.cfg=Object.assign(S.cfg,cfg.v);
+    S.meals=meals||[]; S.foods=foods||[]; S.weights=weights||[]; S.profile=prof?prof.v:null; if(cfg) S.cfg=Object.assign(S.cfg,cfg.v); if(S.cfg.model==="gemini-flash-latest") S.cfg.model=DEFAULT_MODEL;
     try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   }catch(e){ S.persist=false; }
   S.imgOK=!!S.cfg.geminiKey; S.ready=true; renderAll();
